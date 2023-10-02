@@ -21,3 +21,6 @@ zfc - file management utility. Helps you to complete, read, delete and create fi
 
 2. Create file:
    - `akumi main.rs -c` (or --create)
+
+3. Completing the text of a file:
+  - `akumi main.rs -a "hello world"` (or --append)
