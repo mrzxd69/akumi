@@ -1,0 +1,11 @@
+[package]
+name = "akumi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+description = "Tool for reading, writing and other operations with files"
+authors = ["Ilyusha <mrzxd69@gmail.com>"]
+
+[dependencies]
+regex = "1.9.6"
