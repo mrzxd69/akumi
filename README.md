@@ -1,5 +1,5 @@
-# zfc
-zfc - file management utility. Helps you to complete, read, delete and create files 🌺
+# akumi
+akumi - file management utility. Helps you to complete, read, delete and create files 🌺
 
 # Read file
 1. If you want to output the text of a file:
