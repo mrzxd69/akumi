@@ -9,3 +9,4 @@ authors = ["Ilyusha <mrzxd69@gmail.com>"]
 
 [dependencies]
 regex = "1.9.6"
+thiserror = "1.0.49"
