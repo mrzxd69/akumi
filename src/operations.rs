@@ -1,120 +1,97 @@
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufRead, Write};
-use crate::enums::OperationsError;
+use std::{
+    fmt::Display,
+    fs::{File, OpenOptions},
+    io::{self, BufRead, BufReader, Write},
+    path::Path,
+};
 
-use crate::Config;
+use crate::{enums::OperationsError, Config};
 
-pub fn controller(config: Config) {
-    let Config { 
-        lines, 
+pub fn controller(
+    Config {
+        lines,
         path,
-        numeration, 
-        append_text,
+        numeration,
         delete,
-        create
-    } = config;
-
+        create,
+        append_text,
+    }: Config,
+) {
     if lines.is_some() {
         match read_file_enumerate(&path, lines.unwrap_or(usize::MAX), numeration) {
-            Ok(_) => {},
-            Err(OperationsError::FileReadError(msg)) => println!("{msg}"),
-            Err(OperationsError::LineReadError(msg)) => println!("{msg}"),
-            _ => {}
+            Ok(_) => {}
+            Err(err) => println!("{err}"),
         }
-        return;
-    }
-    if let Some(text) = append_text {
+    } else if let Some(text) = append_text {
         match append_file_text(path, text) {
             Ok(msg) => println!("{msg}"),
-            Err(OperationsError::FileCloseError(msg)) => println!("{msg}"),
-            Err(OperationsError::FileReadError(msg)) => println!("{msg}"),
-            Err(OperationsError::FileWriteError(msg)) => println!("{msg}"),
-            _ => {} 
+            Err(err) => println!("{err}"),
         }
-        return;
-    }
-
-    if delete {
+    } else if delete {
         match delete_file(path) {
             Ok(msg) => println!("{msg}"),
-            Err(msg) => println!("{msg}")
+            Err(msg) => println!("{msg}"),
         }
         return;
-    }
-
-    if create {
+    } else if create {
         match create_file(path) {
             Ok(msg) => println!("{msg}"),
-            Err(msg) => println!("{msg}")
+            Err(msg) => println!("{msg}"),
         }
-        return;
-    }
-
-    if append_text.is_none() {
+    } else if append_text.is_none() {
         match read_file(&path, numeration) {
-            Ok(_) => {},
-            Err(OperationsError::FileReadError(msg)) => println!("{msg}"),
-            Err(OperationsError::LineReadError(msg)) => println!("{msg}"),
-            _ => {}
+            Ok(_) => {}
+            Err(err) => println!("{err}"),
         }
-        return;
     }
 }
 
-fn create_file(path: String) -> Result<String, std::io::Error> {
-    File::create(path)?
-        .write_all("".as_bytes())?;
+fn create_file(path: impl AsRef<Path>) -> Result<String, OperationsError> {
+    File::create(path)?.write_all("".as_bytes())?;
 
     Ok("File successful created ✅".to_string())
 }
 
-fn delete_file(path: String) -> Result<String, String> {
-    
-    if let Err(_) = std::fs::remove_file(&path) {
-        return Err("File not found".to_string());
-    }
+fn delete_file(path: impl AsRef<Path>) -> Result<String, OperationsError> {
+    std::fs::remove_file(path)?;
 
     Ok("File successful deleted ✨".to_string())
 }
 
-fn read_file(path: &String, numeration: bool) -> Result<(), OperationsError> {
+fn read_file(path: impl AsRef<Path>, numeration: bool) -> Result<(), OperationsError> {
+    let file = File::open(path)?;
 
-    let file = File::open(path).map_err(|_| {
-        return OperationsError::FileReadError("File not found :(".to_string());
-    })?;
-    
     let reader = BufReader::new(file);
 
-    for (index, line) in reader.lines().into_iter().enumerate() {
-        let success_line = line.map_err(|_| {
-            return OperationsError::LineReadError(format!("Error reading on line: {}", index))
-        })?;
+    for (index, line) in reader.lines().enumerate() {
+        let success_line = line.map_err(|_| OperationsError::LineRead { linenum: index })?;
 
-        if !numeration { 
-            println!("{}", success_line) 
-        } else { 
-            println!("{} | {}", index + 1, success_line) 
+        if !numeration {
+            println!("{}", success_line)
+        } else {
+            println!("{} | {}", index + 1, success_line)
         }
     }
 
-   Ok(())
+    Ok(())
 }
 
-fn read_file_enumerate(path: &String, lines_limit: usize, enumerate: bool) -> Result<(), OperationsError> {
-
-    let file = File::open(path).map_err(|_| {
-        return OperationsError::FileReadError("File not found :(".to_string());
-    })?;
+fn read_file_enumerate(
+    path: impl AsRef<Path>,
+    lines_limit: usize,
+    enumerate: bool,
+) -> Result<(), OperationsError> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut line_count = 1;
 
     for line in reader.lines().take(lines_limit + 1) {
-        if line_count < lines_limit + 1 { 
-            let success_line = line.map_err(|_| {
-                return OperationsError::LineReadError(format!("Error reading on line: {}", line_count))
+        if line_count < lines_limit + 1 {
+            let success_line = line.map_err(|_| OperationsError::LineRead {
+                linenum: line_count,
             })?;
-    
-            if enumerate { 
+
+            if enumerate {
                 println!("{} | {}", line_count, &success_line);
             } else {
                 println!("{}", &success_line);
@@ -125,28 +102,13 @@ fn read_file_enumerate(path: &String, lines_limit: usize, enumerate: bool) -> Re
     Ok(())
 }
 
+fn append_file_text(path: impl AsRef<Path>, text: impl Display) -> Result<String, OperationsError> {
+    let file = OpenOptions::new().write(true).append(true).open(path)?;
 
-fn append_file_text(path: String, text: String) -> Result<String, OperationsError> {
-    let file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(path)
-        .map_err(|_| {
-            return OperationsError::FileReadError("file opening error".to_string());
-        })?;
+    let mut file_writer = io::BufWriter::new(file);
 
-    let mut file_writer = std::io::BufWriter::new(file);
-
-    file_writer.write_all(format!("\n{}", text).as_bytes())
-        .map_err(|_| {
-            return OperationsError::FileWriteError("File writing error".to_string());
-        })?;
-    
-    file_writer
-        .flush()
-        .map_err(|_| {
-            return OperationsError::FileCloseError("File closing error".to_string());
-        })?;
+    file_writer.write_all(format!("\n{}", text).as_bytes())?;
+    file_writer.flush()?;
 
     Ok("File succesful appened 💫".to_string())
 }
