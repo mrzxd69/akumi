@@ -1,6 +1,9 @@
 # akumi
 akumi - file management utility. Helps you to complete, read, delete and create files 🌺
 
+# Install
+ - `cargo install akumi`
+
 # Read file
 1. If you want to output the text of a file:
   - `akumi <file>`
